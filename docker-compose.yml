@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:                    
+  web:                                     ### application Container 
+    build:
+      context: ./app                         ## File locations
+      dockerfile: Dockerfile.app              ## Docker file location
+
+    networks:                                 
+      - my-network
+    
+    ports:
+      - "5000:5000"
+    
+    environment:                              ## DB credential for python container to communicate with db container
+      - DB_HOST=db
+      - DB_USER=user
+      - DB_PASSWORD=admin123
+      - DB_NAME=app_db
+    
+    depends_on:                                 ## First the db conatiner will be created and the health check are ok then web 
+      db:
+         condition: service_healthy
+
+    
+
+
+  db:                                            ### Database Container
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: app_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: admin123
+    
+    volume:
+      - my-volume:/var/lib/mysql                                 ## mapped /var/lib/mysql to custome volume so no data lose
+      - ./app/init.sql:/docker-entrypoint-initdb.d/init.sql        ## init.sql file will be ran at the time of db creation    
+    
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+
+networks:                       ## Network for the containers
+  my-network:
+    driver: bridge
+
+
+volumes:
+  my-volume
